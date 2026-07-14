@@ -5,6 +5,9 @@ class Settings(BaseSettings):
     model_config = SettingsConfigDict(env_file=".env")
 
     database_url: str
+    secret_key: str
+    algorithm: str
+    access_token_expire_minutes: int
 
 
 settings = Settings()
