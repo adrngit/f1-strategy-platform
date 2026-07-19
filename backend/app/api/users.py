@@ -12,4 +12,4 @@ def get_me(current_user: User = Depends(get_current_user)):
 
     #get_current_user already did all the work, if we reach this line, the user is auth and active and return them.
     #FastAPI filters through UserResponse automatically return current_user
-    return current_user
+    return current_user 

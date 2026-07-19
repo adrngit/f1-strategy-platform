@@ -23,3 +23,5 @@ build/
 
 # Logs
 *.log
+# FastF1 cache
+backend/cache/
