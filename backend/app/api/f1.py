@@ -72,3 +72,37 @@ def compare_drivers(
     
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
+    
+@router.get("/sessions/{year}/{round_number}/qualifying")
+def qualifying_results(
+    year: int,
+    round_number: int,
+    current_user: User = Depends(get_current_user),
+):
+    """
+    Captures the qualifying results for a race weekend. Requires authentication.
+
+    Ex. /api/v1/f1/sessions/2023/1/qualifying
+    Returns Q1, Q2, Q3 times and their final grid positions
+    """
+    
+    try:
+        return f1_data.get_qualifying_results(year, round_number)
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+    
+@router.get("/sessions/{year}/{round_number}/strategy")
+def tyre_strategy(
+    year: int,
+    round_number: int,
+    current_user: User = Depends(get_current_user)
+):
+    """
+    Gets all the tyre strategy for all the drivers in the race. Requires authentication.
+    Ex. /api/v1/f1/sessions/2023/1/strategy
+    Returns each of the drivers stints - compound, start lap, end lap, stint length.
+    """
+    try:
+        return f1_data.get_tyre_strategy(year, round_number)
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))

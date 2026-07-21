@@ -71,3 +71,70 @@ def compare_drivers(year: int, round_number: int, session_type: str, driver1: st
         "driver1": summarise(laps1, driver1),
         "driver2": summarise(laps2, driver2),
     }
+
+
+def get_qualifying_results(year: int, round_number: int) -> list[dict]:
+    session = get_session(year, round_number, "Q")
+    results = session.results
+    output = []
+    for _, row in results.iterrows():
+        def safe_time(col):
+            val = row.get(col)
+            return val.total_seconds() if pd.notna(val) else None
+
+        output.append({
+            "position": int(row.get("Position", 0)) if pd.notna(row.get("Position")) else None,
+            "driver_code": str(row.get("Abbreviation", "")),
+            "full_name": str(row.get("FullName", "")),
+            "team": str(row.get("TeamName", "")),
+            "q1_time": safe_time("Q1"),
+            "q2_time": safe_time("Q2"),
+            "q3_time": safe_time("Q3"),
+        })
+    return output
+
+
+def get_tyre_strategy(year: int, round_number: int) -> list[dict]:
+    session = get_session(year, round_number, "R")
+    output = []
+
+    for driver in session.drivers:
+        try:
+            driver_laps = session.laps.pick_drivers(driver)
+            info = session.get_driver(driver)
+            driver_code = info["Abbreviation"]
+            stints = []
+            current_compound = None
+            stint_start = None
+
+            for _, lap in driver_laps.iterrows():
+                compound = lap.get("Compound")
+                lap_num = int(lap.get("LapNumber", 0))
+                if compound != current_compound:
+                    if current_compound is not None:
+                        stints.append({
+                            "compound": current_compound,
+                            "start_lap": stint_start,
+                            "end_lap": lap_num - 1,
+                            "length": lap_num - stint_start,
+                        })
+                    current_compound = compound
+                    stint_start = lap_num
+
+            if current_compound is not None:
+                stints.append({
+                    "compound": current_compound,
+                    "start_lap": stint_start,
+                    "end_lap": int(driver_laps["LapNumber"].max()),
+                    "length": int(driver_laps["LapNumber"].max()) - stint_start + 1,
+                })
+
+            output.append({
+                "driver_code": driver_code,
+                "stints": stints,
+                "total_stints": len(stints),
+            })
+        except Exception:
+            continue
+
+    return output
