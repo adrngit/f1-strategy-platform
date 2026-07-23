@@ -9,6 +9,6 @@ class Settings(BaseSettings):
     algorithm: str
     access_token_expire_minutes: int
     fastf1_cache_path: str
-
+ 
 
 settings = Settings()

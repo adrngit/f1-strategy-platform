@@ -1,7 +1,7 @@
 import fastf1
 import pandas as pd
 from app.core.config import settings
-
+from concurrent.futures import ThreadPoolExecutor, as_completed
 fastf1.Cache.enable_cache(settings.fastf1_cache_path)
 
 
@@ -138,3 +138,77 @@ def get_tyre_strategy(year: int, round_number: int) -> list[dict]:
             continue
 
     return output
+
+def get_driver_standings(year: int, up_to_round: int) -> list[dict]:
+    """
+    Calculates drivers championship standings up to a specific round.
+    
+    Fetches results for rounds 1 through up_to_round and accumulates the points for each driver.
+
+    Uses parallel fetching to speed up the process.
+
+    Args:
+        year: Championship year
+        up_to_round: Calculate standings after this round number
+
+    Returns:
+        List of drivers sorted by total WDC points, from highest to lowest.
+    """
+
+    #dictionary to accumulate the points per driver
+    #key: driver code, value: dict w/ name, team, points, wins.
+
+    standings = {}
+
+    def fetch_round(round_number):
+        #fetches results for a single round and runs in thread.
+
+        try:
+            return round_number, get_session_results(year, round_number, "R")
+        except Exception:
+            #if a round fails to load, skips it rather than crashing everything down hehe
+            return round_number, []
+        
+    #fetch up to 3 rounds simultaneously 
+    #fetch more than 3 concurrent FastF1 requests can cause rate limiting.
+    with ThreadPoolExecutor(max_workers=3) as executor:
+        futures = {
+            executor.submit(fetch_round, r): r
+            for r in range(1, up_to_round + 1)
+        }
+        
+        for future in as_completed(futures):
+            round_number, results = future.result()
+            for driver in results:
+                code = driver["driver_code"]
+                if not code:
+                    continue
+                if code not in standings:
+                    standings[code] = {
+                        "driver_code": code,
+                        "full_name": driver["full_name"],
+                        "team": driver["team"],
+                        "points": 0.0,
+                        "wins": 0,
+                        "podiums": 0,
+                        "rounds_completed": 0,
+                    }
+                standings[code]["points"] += driver["points"]
+                standings[code]["rounds_completed"] += 1
+                if driver["position"] == 1:
+                    standings[code]["wins"] += 1
+                if driver["position"] is not None and driver["position"] <= 3:
+                    standings[code]["podiums"] += 1
+
+    #sort by points descending, then wins as tiebreaker
+    sorted_standings = sorted(
+        standings.values(),
+        key=lambda x: (x["points"], x["wins"]),
+        reverse=True,
+    )
+    
+    #add championship position
+    for i, driver in enumerate(sorted_standings):
+        driver["position"] = i + 1
+
+    return sorted_standings

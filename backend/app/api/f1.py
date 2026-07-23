@@ -106,3 +106,22 @@ def tyre_strategy(
         return f1_data.get_tyre_strategy(year, round_number)
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
+    
+@router.get("/standings/{year}/{up_to_round}")
+def driver_standings(
+    year: int,
+    up_to_round: int,
+    current_user: User = Depends(get_current_user)
+):
+    """
+    Retrieves the drivers championship standings up to a specific round.
+    Requires authentication.
+
+    Ex. /api/v1/f1/standings/2023/5
+    Returns drivers sorted by points after the first 5 rounds
+    """
+
+    try:
+        return f1_data.get_driver_standings(year, up_to_round)
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
